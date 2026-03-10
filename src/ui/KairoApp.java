@@ -10,7 +10,7 @@ public class KairoApp {
         // Create the workspace model
         Workspace workspace = new Workspace();
 
-        // Create window
+        //Create window
         JFrame window = new JFrame("Kairo");
 
         window.setSize(1000, 700);

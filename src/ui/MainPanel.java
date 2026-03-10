@@ -171,7 +171,6 @@ public class MainPanel extends JPanel {
         });
 
         contentArea.add(addTaskButton, BorderLayout.SOUTH);
-
         contentArea.revalidate();
         contentArea.repaint();
     }
