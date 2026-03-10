@@ -79,9 +79,7 @@ public class Page implements Identifiable {
 	}
 	
 	public void removeNote(UUID noteId) {
-		
-		tasks.removeIf(n -> n.getId().equals(noteId));
-		
+	    notes.removeIf(n -> n.getId().equals(noteId)); 
 	}
 	
 	@Override
