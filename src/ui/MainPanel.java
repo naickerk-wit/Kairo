@@ -149,7 +149,7 @@ public class MainPanel extends JPanel {
         tasksPanel.setLayout(new BoxLayout(tasksPanel, BoxLayout.Y_AXIS));
         tasksPanel.setBackground(BACKGROUND_COLOR);
 
-        // Sort tasks by due date
+        // Sort tasks by date
         page.getTasks().stream()
                 .sorted(Comparator.comparing(Task::getDueDate, Comparator.nullsLast(Comparator.naturalOrder())))
                 .forEach(task -> tasksPanel.add(createTaskCard(task, page)));
