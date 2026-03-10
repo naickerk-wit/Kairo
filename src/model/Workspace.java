@@ -50,7 +50,7 @@ public class Workspace {
 		
 	}
 	
-	public Page getSelectedPage(UUID id) {
+public Page getSelectedPage() {
 		
 		if(selectedPageId == null) return null;
 		

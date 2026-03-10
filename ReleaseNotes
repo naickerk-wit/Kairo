@@ -1,0 +1,174 @@
+   # Kairo: A Smart Task and Scheduling System
+   ## Release Notes - Increment 1
+
+   **Version:** 1.0.0  
+   **Release Date:** March 2026  
+   **Team:** Kivashin Naicker, Adiyabazar Erdenepurev, Viktoria Nanushi
+
+   ---
+
+   ## Features Implemented in Increment 1
+
+   ### Core Infrastructure
+   - **Workspace Management**: Complete workspace structure with support for multiple pages
+   - **Page System**: Create, rename, and delete pages to organize tasks and notes
+   - **Data Persistence**: Automatic saving and loading of workspace data using JSON file storage
+
+   ### Task Management
+   - **Task Creation**: Add tasks with title (required), due date (optional), priority level, and status
+   - **Task Editing**: Modify all task properties after creation
+   - **Task Deletion**: Remove tasks from pages
+   - **Task Completion**: Mark tasks as completed with visual distinction
+   - **Calendar Date Picker**: Interactive calendar popup for easy date selection
+
+   ### Note Management
+   - **Note Creation**: Add text notes to any page
+   - **Note Editing**: Modify note content after creation
+   - **Note Deletion**: Remove notes from pages
+   - **Timestamp Display**: Notes display their creation date
+
+   ### Automatic Task Summaries
+   - **Upcoming Tasks View**: Shows all active tasks with future due dates, sorted by date
+   - **Overdue Tasks View**: Shows all incomplete tasks past their due date
+   - **Priority Tasks View**: Shows all active tasks sorted by priority level
+
+   ### User Interface
+   - **Modern Design**: Clean, minimal interface inspired by Notion
+   - **Sidebar Navigation**: Easy access to pages and task summary views
+   - **Responsive Layout**: Adapts to different window sizes
+   - **Visual Feedback**: Hover states, completion indicators, and priority color coding
+   - **Input Validation**: Prevents empty task titles, empty page names, and ensures data integrity
+
+   ### Data Models
+   - `Workspace` - Container for all pages
+   - `Page` - Container for tasks and notes with a name
+   - `Task` - Includes id, title, dueDate, priority, status
+   - `Note` - Includes id, content, createdAt timestamp
+   - `Priority` - Enum (LOW, MEDIUM, HIGH)
+   - `Status` - Enum (NOT_STARTED, IN_PROGRESS, COMPLETED, CANCELLED)
+   - `Tag` - For future tagging functionality
+
+   ### Storage Layer
+   - `StorageManager` - Handles file I/O operations
+   - `WorkspaceStorage` - JSON serialization/deserialization with Gson
+   - Type adapters for LocalDate, Instant, and UUID
+
+   ### Services
+   - `TaskSummaryService` - Aggregates tasks across all pages for summary views
+
+   ---
+
+   ## Features to be Completed in Increment 2
+
+   ### Enhanced Features
+   - **Tag System**: Ability to add tags to tasks for categorization and filtering
+   - **Search Functionality**: Search across all pages, tasks, and notes
+   - **Task Filtering**: Filter tasks by status, priority, or date range
+   - **Drag and Drop**: Reorder tasks and notes within pages
+   - **Keyboard Shortcuts**: Quick actions for power users
+
+   ### UI Improvements
+   - **Dark Mode**: Alternative color theme for low-light environments
+   - **Custom Themes**: User-selectable color schemes
+   - **Task Due Date Reminders**: Visual alerts for approaching deadlines
+   - **Rich Text Notes**: Basic formatting support for notes
+
+   ### Data Management
+   - **Export/Import**: Backup and restore workspace data
+   - **Undo/Redo**: Reverse recent actions
+   - **Archive Pages**: Hide completed pages without deleting
+
+   ---
+
+   ## How to Build and Run the Project
+
+   ### Prerequisites
+   - Java Development Kit (JDK) 11 or higher
+   - Eclipse IDE (or any Java IDE)
+   - Gson library (for JSON serialization)
+
+   ### Project Structure
+   ```
+   Kairo/
+   ├── model/                    # Data model classes
+   │   ├── Workspace.java
+   │   ├── Page.java
+   │   ├── Task.java
+   │   ├── Note.java
+   │   ├── Priority.java
+   │   ├── Status.java
+   │   ├── Tag.java
+   │   ├── Identifiable.java
+   │   └── TaskSummaryService.java
+   ├── Storage/                  # Persistence layer
+   │   ├── StorageManager.java
+   │   ├── WorkspaceStorage.java
+   │   ├── LocalDateAdapter.java
+   │   ├── InstantAdapter.java
+   │   └── UUIDAdapter.java
+   ├── ui/                       # User interface
+   │   ├── KairoApp.java         # Main entry point
+   │   └── MainPanel.java        # Main UI panel
+   └── RELEASE_NOTES.md
+   ```
+
+   ### Build Instructions
+
+   1. **Import Project into Eclipse**
+      - Open Eclipse IDE
+      - File > Import > General > Existing Projects into Workspace
+      - Select the Kairo project folder
+      - Click Finish
+
+   2. **Add Gson Library**
+      - Download Gson JAR from Maven Central or use Maven/Gradle
+      - Right-click project > Build Path > Configure Build Path
+      - Add External JAR > Select gson-2.10.1.jar (or latest version)
+
+   3. **Organize Source Folders**
+      - Ensure `model`, `Storage`, and `ui` packages are in the source path
+      - Right-click project > Build Path > Configure Build Path
+      - Add the source folders if not already present
+
+   ### Run Instructions
+
+   1. **Run from Eclipse**
+      - Navigate to `ui/KairoApp.java`
+      - Right-click > Run As > Java Application
+      - The application window will open
+
+   2. **Run from Command Line**
+      ```bash
+      # Compile (from project root)
+      javac -cp ".:gson-2.10.1.jar" model/*.java Storage/*.java ui/*.java
+
+      # Run
+      java -cp ".:gson-2.10.1.jar" ui.KairoApp
+      ```
+
+   ### Data Storage Location
+   - Workspace data is automatically saved to: `~/.kairo/workspace.json`
+   - The directory and file are created automatically on first save
+   - Data is loaded on application startup and saved on close
+
+   ### Testing the Application
+
+   1. **Create a Page**: Click "+ New Page" in the sidebar
+   2. **Add a Task**: Click "+ Add Task" and fill in details
+   3. **Add a Note**: Click "+ Add Note" in the notes section
+   4. **Mark Complete**: Click the checkbox next to a task
+   5. **View Summaries**: Click "Upcoming", "Overdue", or "Priority" in sidebar
+   6. **Close and Reopen**: Verify data persists across sessions
+
+   ---
+
+   ## Known Issues
+   - None reported in Increment 1
+
+   ## Dependencies
+   - Gson 2.10.1+ (JSON serialization library)
+   - Java Swing (included in JDK)
+
+   ---
+
+   *Kairo - Organize your tasks, clarify your priorities.*
