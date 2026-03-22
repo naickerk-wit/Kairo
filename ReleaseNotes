@@ -1,9 +1,67 @@
    # Kairo: A Smart Task and Scheduling System
-   ## Release Notes - Increment 1
+   ## Release Notes - Increment 2
 
-   **Version:** 1.0.0  
+   **Version:** 2.0.0  
    **Release Date:** March 2026  
    **Team:** Kivashin Naicker, Adiyabazar Erdenepurev, Viktoria Nanushi
+
+   ---
+
+   ## Bug Fixes in Increment 2
+
+   ### Fixed: Data Persistence Issue
+   - **Problem:** Pages and Tasks did not save when the application was reopened
+   - **Solution:** Added directory creation in StorageManager.save() to create the ~/.kairo/ directory if it doesn't exist before writing the workspace.json file
+
+   ### Fixed: Window Close Error
+   - **Problem:** Program gives an error if the user tries to use the "x button" to close the application window
+   - **Solution:** The window close handler now properly saves data before disposing the window due to the directory creation fix above
+
+   ---
+
+   ## Features Implemented in Increment 2
+
+   ### Tag System
+   - **Tag Creation:** Create tags with auto-assigned colors from a sophisticated palette
+   - **Tag Management:** Add, remove, and manage tags on individual tasks
+   - **Workspace Tags:** Tags are saved at the workspace level for reuse across tasks
+   - **Visual Display:** Tags are displayed with color-coded labels on task cards
+
+   ### Search Functionality
+   - **Global Search:** Search bar in sidebar searches across all pages, tasks, notes, and tags
+   - **Real-time Results:** Press Enter to see search results with clickable navigation
+   - **Search Result Types:** Results show the type (Page, Task, Note, Tag) and location
+   - **Keyboard Support:** Press Escape to clear search
+
+   ### Task Filtering
+   - **Status Filter:** Filter tasks by Not Started, In Progress, Completed, or Cancelled
+   - **Priority Filter:** Filter tasks by High, Medium, or Low priority
+   - **Clear Filters:** One-click button to reset all filters
+   - **Dynamic Updates:** Filters apply instantly without page refresh
+
+   ### Dark Mode
+   - **Theme Toggle:** Switch between light and dark themes from the sidebar
+   - **Full UI Theming:** All colors adapt including backgrounds, text, borders, and cards
+   - **Persistent Setting:** Dark mode preference is saved with workspace data
+   - **Smooth Transition:** UI rebuilds seamlessly when toggling themes
+
+   ### Task Due Date Reminders
+   - **Visual Alerts:** Tasks due within 3 days are highlighted with a warning background color
+   - **Due Soon Indicator:** Shows "Due in X days" for approaching deadlines
+   - **Today Indicator:** Tasks due today are prominently marked
+   - **Overdue Styling:** Overdue tasks have distinct red-tinted background
+
+   ### Archive Pages
+   - **Archive Button:** Archive pages to hide them from the main view
+   - **Archived View:** Dedicated view in sidebar to see all archived pages
+   - **Restore Pages:** Restore archived pages back to the main workspace
+   - **Permanent Delete:** Option to permanently delete archived pages
+
+   ### Export/Import
+   - **Export Workspace:** Save entire workspace to a JSON file for backup
+   - **Import Workspace:** Load workspace data from a JSON backup file
+   - **File Chooser:** Standard file dialogs for selecting save/load locations
+   - **Confirmation Dialog:** Warning before import overwrites current data
 
    ---
 
@@ -162,8 +220,8 @@
 
    ---
 
-   ## Known Issues
-   - None reported in Increment 1
+## Known Issues
+   - None - all known issues from Increment 1 have been resolved
 
    ## Dependencies
    - Gson 2.10.1+ (JSON serialization library)

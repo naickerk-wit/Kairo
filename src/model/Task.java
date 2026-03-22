@@ -1,6 +1,9 @@
 package model;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.UUID;
 
 public class Task implements Identifiable {
@@ -10,6 +13,7 @@ public class Task implements Identifiable {
 	private LocalDate dueDate;
 	private Priority priority;
 	private Status status;
+	private List<Tag> tags;
 	
 	
 	public Task(String title, LocalDate dueDate, Priority priority, Status status) {
@@ -19,6 +23,7 @@ public class Task implements Identifiable {
 		this.dueDate = dueDate;
 		this.priority = priority != null ? priority : Priority.MEDIUM;
 		this.status = status;
+		this.tags = new ArrayList<>();
 		
 	}
 	
@@ -71,9 +76,60 @@ public class Task implements Identifiable {
 		
 	} 
 	
-	public void setStatus(Status status) { 
+public void setStatus(Status status) { 
 		
 		this.status = status; 
+		
+	}
+	
+	public List<Tag> getTags() {
+		
+		if (tags == null) {
+			tags = new ArrayList<>();
+		}
+		return Collections.unmodifiableList(tags);
+		
+	}
+	
+	public void addTag(Tag tag) {
+		
+		if (tags == null) {
+			tags = new ArrayList<>();
+		}
+		if (tag != null && !tags.contains(tag)) {
+			tags.add(tag);
+		}
+		
+	}
+	
+	public void removeTag(Tag tag) {
+		
+		if (tags != null) {
+			tags.remove(tag);
+		}
+		
+	}
+	
+	public void removeTagByName(String tagName) {
+		
+		if (tags != null) {
+			tags.removeIf(t -> t.getName().equalsIgnoreCase(tagName));
+		}
+		
+	}
+	
+	public boolean hasTag(String tagName) {
+		
+		if (tags == null) return false;
+		return tags.stream().anyMatch(t -> t.getName().equalsIgnoreCase(tagName));
+		
+	}
+	
+	public void clearTags() {
+		
+		if (tags != null) {
+			tags.clear();
+		}
 		
 	}
 	

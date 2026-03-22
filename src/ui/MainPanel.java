@@ -4,19 +4,28 @@ import model.*;
 
 import javax.swing.*;
 import javax.swing.border.*;
+import javax.swing.filechooser.FileNameExtensionFilter;
 import java.awt.*;
 import java.awt.event.*;
 import java.awt.geom.Ellipse2D;
 import java.awt.geom.RoundRectangle2D;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.nio.file.Files;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.format.TextStyle;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
+import java.util.stream.Collectors;
+
+import Storage.WorkspaceStorage;
 
 /**
  * Main UI panel with sophisticated, modern minimal design
@@ -36,43 +45,89 @@ public class MainPanel extends JPanel {
     private JPanel contentArea;
     private JPanel sidebarContent;
     
-    // View states
-    private enum ViewMode { PAGE, UPCOMING, OVERDUE, PRIORITY }
+// View states
+    private enum ViewMode { PAGE, UPCOMING, OVERDUE, PRIORITY, SEARCH, ARCHIVED }
     private ViewMode currentView = ViewMode.PAGE;
+    
+    // Search and filter state
+    private String searchQuery = "";
+    private Status filterStatus = null;
+    private Priority filterPriority = null;
+    private Tag filterTag = null;
+    private JTextField searchField;
+    private JPanel sidebar;
 
-    // ========== REFINED MODERN NEUTRAL COLOR PALETTE ==========
-    // Cool whites and soft neutrals
-    private static final Color BACKGROUND = new Color(252, 252, 251);           // Clean off-white
-    private static final Color SIDEBAR_BG = new Color(247, 247, 246);           // Light cool grey
-    private static final Color SIDEBAR_HOVER = new Color(240, 240, 238);        // Subtle hover
-    private static final Color SIDEBAR_SELECTED = new Color(232, 232, 230);     // Selected state
+// ========== REFINED MODERN NEUTRAL COLOR PALETTE ==========
+    // Light theme colors (default)
+    private static final Color BACKGROUND_LIGHT = new Color(252, 252, 251);           // Clean off-white
+    private static final Color SIDEBAR_BG_LIGHT = new Color(247, 247, 246);           // Light cool grey
+    private static final Color SIDEBAR_HOVER_LIGHT = new Color(240, 240, 238);        // Subtle hover
+    private static final Color SIDEBAR_SELECTED_LIGHT = new Color(232, 232, 230);     // Selected state
     
-    // Borders and dividers
-    private static final Color BORDER_COLOR = new Color(234, 234, 232);         // Soft border
-    private static final Color BORDER_DARK = new Color(212, 212, 208);          // Stronger border
+    // Dark theme colors
+    private static final Color BACKGROUND_DARK = new Color(25, 25, 25);               // Near black
+    private static final Color SIDEBAR_BG_DARK = new Color(32, 32, 32);               // Dark grey
+    private static final Color SIDEBAR_HOVER_DARK = new Color(45, 45, 45);            // Subtle hover
+    private static final Color SIDEBAR_SELECTED_DARK = new Color(55, 55, 55);         // Selected state
     
-    // Text colors - rich blacks and greys
-    private static final Color TEXT_PRIMARY = new Color(32, 32, 32);            // Near black
-    private static final Color TEXT_SECONDARY = new Color(96, 96, 96);          // Dark grey
-    private static final Color TEXT_TERTIARY = new Color(140, 140, 140);        // Medium grey
-    private static final Color TEXT_MUTED = new Color(175, 175, 175);           // Light grey
+    // Current theme colors (will be set based on dark mode)
+    private Color BACKGROUND = BACKGROUND_LIGHT;
+    private Color SIDEBAR_BG = SIDEBAR_BG_LIGHT;
+    private Color SIDEBAR_HOVER = SIDEBAR_HOVER_LIGHT;
+    private Color SIDEBAR_SELECTED = SIDEBAR_SELECTED_LIGHT;
+    
+// Borders and dividers - light theme
+    private static final Color BORDER_COLOR_LIGHT = new Color(234, 234, 232);
+    private static final Color BORDER_DARK_LIGHT = new Color(212, 212, 208);
+    
+    // Borders and dividers - dark theme  
+    private static final Color BORDER_COLOR_DARK = new Color(55, 55, 55);
+    private static final Color BORDER_DARK_DARK = new Color(70, 70, 70);
+    
+    // Current border colors
+    private Color BORDER_COLOR = BORDER_COLOR_LIGHT;
+    private Color BORDER_DARKER = BORDER_DARK_LIGHT;
+    
+    // Text colors - light theme
+    private static final Color TEXT_PRIMARY_LIGHT = new Color(32, 32, 32);
+    private static final Color TEXT_SECONDARY_LIGHT = new Color(96, 96, 96);
+    private static final Color TEXT_TERTIARY_LIGHT = new Color(140, 140, 140);
+    private static final Color TEXT_MUTED_LIGHT = new Color(175, 175, 175);
+    
+    // Text colors - dark theme
+    private static final Color TEXT_PRIMARY_DARK = new Color(240, 240, 240);
+    private static final Color TEXT_SECONDARY_DARK = new Color(180, 180, 180);
+    private static final Color TEXT_TERTIARY_DARK = new Color(140, 140, 140);
+    private static final Color TEXT_MUTED_DARK = new Color(100, 100, 100);
+    
+    // Current text colors
+    private Color TEXT_PRIMARY = TEXT_PRIMARY_LIGHT;
+    private Color TEXT_SECONDARY = TEXT_SECONDARY_LIGHT;
+    private Color TEXT_TERTIARY = TEXT_TERTIARY_LIGHT;
+    private Color TEXT_MUTED = TEXT_MUTED_LIGHT;
     
     // Accent colors - sophisticated muted taupe/tan
-    private static final Color ACCENT = new Color(130, 120, 105);               // Muted taupe
-    private static final Color ACCENT_HOVER = new Color(110, 100, 85);          // Darker taupe
-    private static final Color ACCENT_LIGHT = new Color(242, 240, 236);         // Light taupe tint
+    private static final Color ACCENT = new Color(130, 120, 105);
+    private static final Color ACCENT_HOVER = new Color(110, 100, 85);
+    private static final Color ACCENT_LIGHT = new Color(242, 240, 236);
     
     // Status colors - muted and sophisticated
-    private static final Color SUCCESS = new Color(92, 124, 96);                // Muted sage
-    private static final Color SUCCESS_LIGHT = new Color(240, 246, 240);        // Light sage tint
-    private static final Color WARNING = new Color(168, 138, 84);               // Muted gold
-    private static final Color WARNING_LIGHT = new Color(252, 248, 240);        // Light gold tint
-    private static final Color DANGER = new Color(158, 92, 88);                 // Muted terracotta
-    private static final Color DANGER_LIGHT = new Color(252, 244, 244);         // Light rose tint
+    private static final Color SUCCESS = new Color(92, 124, 96);
+    private static final Color SUCCESS_LIGHT = new Color(240, 246, 240);
+    private static final Color WARNING = new Color(168, 138, 84);
+    private static final Color WARNING_LIGHT = new Color(252, 248, 240);
+    private static final Color DANGER = new Color(158, 92, 88);
+    private static final Color DANGER_LIGHT = new Color(252, 244, 244);
     
-    // Card colors
-    private static final Color CARD_BG = Color.WHITE;
-    private static final Color CARD_BORDER = new Color(238, 238, 236);
+    // Card colors - light and dark
+    private static final Color CARD_BG_LIGHT = Color.WHITE;
+    private static final Color CARD_BG_DARK = new Color(38, 38, 38);
+    private static final Color CARD_BORDER_LIGHT = new Color(238, 238, 236);
+    private static final Color CARD_BORDER_DARK = new Color(55, 55, 55);
+    
+    // Current card colors
+    private Color CARD_BG = CARD_BG_LIGHT;
+    private Color CARD_BORDER = CARD_BORDER_LIGHT;
 
     // ========== ELEGANT FONTS ==========
     // Using clean typography hierarchy
@@ -85,9 +140,12 @@ public class MainPanel extends JPanel {
     private static final Font FONT_TINY = new Font("SansSerif", Font.PLAIN, 11);
     private static final Font FONT_MICRO = new Font("SansSerif", Font.PLAIN, 10);
 
-    public MainPanel(Workspace workspace) {
+public MainPanel(Workspace workspace) {
         this.workspace = workspace;
         this.summaryService = new TaskSummaryService(workspace);
+        
+        // Apply dark mode if enabled
+        applyTheme(workspace.isDarkMode());
         
         setLayout(new BorderLayout());
         setBackground(BACKGROUND);
@@ -102,11 +160,66 @@ public class MainPanel extends JPanel {
             showWelcome();
         }
     }
+    
+    private void applyTheme(boolean darkMode) {
+        if (darkMode) {
+            BACKGROUND = BACKGROUND_DARK;
+            SIDEBAR_BG = SIDEBAR_BG_DARK;
+            SIDEBAR_HOVER = SIDEBAR_HOVER_DARK;
+            SIDEBAR_SELECTED = SIDEBAR_SELECTED_DARK;
+            BORDER_COLOR = BORDER_COLOR_DARK;
+            BORDER_DARKER = BORDER_DARK_DARK;
+            TEXT_PRIMARY = TEXT_PRIMARY_DARK;
+            TEXT_SECONDARY = TEXT_SECONDARY_DARK;
+            TEXT_TERTIARY = TEXT_TERTIARY_DARK;
+            TEXT_MUTED = TEXT_MUTED_DARK;
+            CARD_BG = CARD_BG_DARK;
+            CARD_BORDER = CARD_BORDER_DARK;
+        } else {
+            BACKGROUND = BACKGROUND_LIGHT;
+            SIDEBAR_BG = SIDEBAR_BG_LIGHT;
+            SIDEBAR_HOVER = SIDEBAR_HOVER_LIGHT;
+            SIDEBAR_SELECTED = SIDEBAR_SELECTED_LIGHT;
+            BORDER_COLOR = BORDER_COLOR_LIGHT;
+            BORDER_DARKER = BORDER_DARK_LIGHT;
+            TEXT_PRIMARY = TEXT_PRIMARY_LIGHT;
+            TEXT_SECONDARY = TEXT_SECONDARY_LIGHT;
+            TEXT_TERTIARY = TEXT_TERTIARY_LIGHT;
+            TEXT_MUTED = TEXT_MUTED_LIGHT;
+            CARD_BG = CARD_BG_LIGHT;
+            CARD_BORDER = CARD_BORDER_LIGHT;
+        }
+    }
+    
+    private void toggleDarkMode() {
+        workspace.toggleDarkMode();
+        applyTheme(workspace.isDarkMode());
+        
+        // Rebuild UI with new colors
+        removeAll();
+        setupSidebar();
+        setupContentArea();
+        
+        if (currentView == ViewMode.PAGE && currentPage != null) {
+            showPageContent(currentPage);
+        } else if (currentView == ViewMode.SEARCH) {
+            showSearchResults();
+        } else if (currentView == ViewMode.ARCHIVED) {
+            showArchivedPages();
+        } else if (currentView != ViewMode.PAGE) {
+            showSummaryView(currentView);
+        } else {
+            showWelcome();
+        }
+        
+        revalidate();
+        repaint();
+    }
 
-    // ==================== SIDEBAR ====================
+// ==================== SIDEBAR ====================
 
     private void setupSidebar() {
-        JPanel sidebar = new JPanel(new BorderLayout());
+        sidebar = new JPanel(new BorderLayout());
         sidebar.setBackground(SIDEBAR_BG);
         sidebar.setPreferredSize(new Dimension(260, 0));
         sidebar.setBorder(new MatteBorder(0, 0, 0, 1, BORDER_COLOR));
@@ -120,12 +233,18 @@ public class MainPanel extends JPanel {
         sidebarContent.setLayout(new BoxLayout(sidebarContent, BoxLayout.Y_AXIS));
         sidebarContent.setBackground(SIDEBAR_BG);
         sidebarContent.setBorder(new EmptyBorder(12, 14, 14, 14));
+        
+        // Search bar
+        JPanel searchPanel = createSearchBar();
+        sidebarContent.add(searchPanel);
+        sidebarContent.add(Box.createVerticalStrut(16));
 
         // Task Summaries Section
         addSidebarSection("VIEWS", sidebarContent);
         addSummaryButton("Upcoming", "Tasks due soon", ViewMode.UPCOMING, sidebarContent);
         addSummaryButton("Overdue", "Past due date", ViewMode.OVERDUE, sidebarContent);
         addSummaryButton("Priority", "By importance", ViewMode.PRIORITY, sidebarContent);
+        addSummaryButton("Archived", "Hidden pages", ViewMode.ARCHIVED, sidebarContent);
 
         sidebarContent.add(Box.createVerticalStrut(20));
 
@@ -167,11 +286,119 @@ public class MainPanel extends JPanel {
         scrollPane.getViewport().setBackground(SIDEBAR_BG);
         sidebar.add(scrollPane, BorderLayout.CENTER);
 
-        // New Page button at bottom
-        JPanel bottomPanel = createNewPageButton();
+        // Bottom panel with buttons
+        JPanel bottomPanel = createSidebarBottom();
         sidebar.add(bottomPanel, BorderLayout.SOUTH);
 
         add(sidebar, BorderLayout.WEST);
+    }
+    
+    private JPanel createSearchBar() {
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.setBackground(SIDEBAR_BG);
+        panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 36));
+        
+        searchField = new JTextField();
+        searchField.setFont(FONT_SMALL);
+        searchField.setForeground(TEXT_PRIMARY);
+        searchField.setBackground(CARD_BG);
+        searchField.setBorder(new CompoundBorder(
+            new LineBorder(BORDER_COLOR, 1, true),
+            new EmptyBorder(8, 10, 8, 10)
+        ));
+        searchField.setCaretColor(TEXT_PRIMARY);
+        
+        // Add placeholder text behavior
+        searchField.setText("Search...");
+        searchField.setForeground(TEXT_MUTED);
+        
+        searchField.addFocusListener(new FocusAdapter() {
+            @Override
+            public void focusGained(FocusEvent e) {
+                if (searchField.getText().equals("Search...")) {
+                    searchField.setText("");
+                    searchField.setForeground(TEXT_PRIMARY);
+                }
+            }
+            @Override
+            public void focusLost(FocusEvent e) {
+                if (searchField.getText().isEmpty()) {
+                    searchField.setText("Search...");
+                    searchField.setForeground(TEXT_MUTED);
+                }
+            }
+        });
+        
+        searchField.addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyPressed(KeyEvent e) {
+                if (e.getKeyCode() == KeyEvent.VK_ENTER) {
+                    String query = searchField.getText().trim();
+                    if (!query.isEmpty() && !query.equals("Search...")) {
+                        searchQuery = query;
+                        currentView = ViewMode.SEARCH;
+                        pageList.clearSelection();
+                        showSearchResults();
+                    }
+                }
+                // Keyboard shortcut: Escape clears search
+                if (e.getKeyCode() == KeyEvent.VK_ESCAPE) {
+                    searchField.setText("");
+                    searchQuery = "";
+                    searchField.transferFocus();
+                }
+            }
+        });
+        
+        panel.add(searchField, BorderLayout.CENTER);
+        return panel;
+    }
+    
+    private JPanel createSidebarBottom() {
+        JPanel panel = new JPanel();
+        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+        panel.setBackground(SIDEBAR_BG);
+        panel.setBorder(new CompoundBorder(
+            new MatteBorder(1, 0, 0, 0, BORDER_COLOR),
+            new EmptyBorder(10, 14, 10, 14)
+        ));
+        
+        // New Page button
+        JButton newPageBtn = createStyledButton("+ New Page", new Color(52, 52, 52), Color.WHITE);
+        newPageBtn.setFont(FONT_BODY);
+        newPageBtn.setMaximumSize(new Dimension(Integer.MAX_VALUE, 38));
+        newPageBtn.setAlignmentX(Component.LEFT_ALIGNMENT);
+        newPageBtn.addActionListener(e -> createNewPage());
+        panel.add(newPageBtn);
+        
+        panel.add(Box.createVerticalStrut(8));
+        
+        // Bottom row with dark mode toggle and export/import
+        JPanel bottomRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+        bottomRow.setBackground(SIDEBAR_BG);
+        bottomRow.setAlignmentX(Component.LEFT_ALIGNMENT);
+        
+        // Dark mode toggle
+        JButton darkModeBtn = createTextButton(workspace.isDarkMode() ? "Light Mode" : "Dark Mode", TEXT_SECONDARY);
+        darkModeBtn.setFont(FONT_TINY);
+        darkModeBtn.addActionListener(e -> toggleDarkMode());
+        bottomRow.add(darkModeBtn);
+        
+        // Export button
+        JButton exportBtn = createTextButton("Export", TEXT_SECONDARY);
+        exportBtn.setFont(FONT_TINY);
+        exportBtn.addActionListener(e -> exportWorkspace());
+        bottomRow.add(exportBtn);
+        
+        // Import button
+        JButton importBtn = createTextButton("Import", TEXT_SECONDARY);
+        importBtn.setFont(FONT_TINY);
+        importBtn.addActionListener(e -> importWorkspace());
+        bottomRow.add(importBtn);
+        
+        panel.add(bottomRow);
+        
+        return panel;
     }
 
     private JPanel createSidebarHeader() {
@@ -299,11 +526,15 @@ public class MainPanel extends JPanel {
             public void mouseExited(MouseEvent e) {
                 btn.setBackground(currentView == mode ? SIDEBAR_SELECTED : SIDEBAR_BG);
             }
-            @Override
+@Override
             public void mouseClicked(MouseEvent e) {
                 currentView = mode;
                 pageList.clearSelection();
-                showSummaryView(mode);
+                if (mode == ViewMode.ARCHIVED) {
+                    showArchivedPages();
+                } else {
+                    showSummaryView(mode);
+                }
                 btn.setBackground(SIDEBAR_SELECTED);
             }
         });
@@ -317,6 +548,7 @@ public class MainPanel extends JPanel {
             case UPCOMING: return "\u25CB";  // Circle
             case OVERDUE: return "\u25C6";   // Diamond
             case PRIORITY: return "\u2605";  // Star
+            case ARCHIVED: return "\u2610";  // Empty checkbox
             default: return "\u25A0";        // Square
         }
     }
@@ -471,9 +703,22 @@ public class MainPanel extends JPanel {
             }
         });
 
-        // Actions panel
+// Actions panel
         JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         actions.setBackground(BACKGROUND);
+        
+        // Archive button
+        JButton archiveBtn = createTextButton("Archive", TEXT_SECONDARY);
+        archiveBtn.addActionListener(e -> {
+            workspace.archivePage(page.getId());
+            pageListModel.removeElement(page);
+            if (!pageListModel.isEmpty()) {
+                selectPage(pageListModel.get(0));
+            } else {
+                showWelcome();
+            }
+        });
+        actions.add(archiveBtn);
 
         JButton deleteBtn = createTextButton("Delete Page", DANGER);
         deleteBtn.addActionListener(e -> {
@@ -502,7 +747,7 @@ public class MainPanel extends JPanel {
         return header;
     }
 
-    private JPanel createTasksSection(Page page) {
+private JPanel createTasksSection(Page page) {
         JPanel section = new JPanel();
         section.setLayout(new BoxLayout(section, BoxLayout.Y_AXIS));
         section.setBackground(BACKGROUND);
@@ -523,41 +768,150 @@ public class MainPanel extends JPanel {
         sectionHeader.add(titleLabel, BorderLayout.WEST);
         sectionHeader.add(addBtn, BorderLayout.EAST);
         section.add(sectionHeader);
+        section.add(Box.createVerticalStrut(8));
+        
+        // Filter bar
+        JPanel filterBar = createFilterBar(page);
+        section.add(filterBar);
         section.add(Box.createVerticalStrut(14));
 
-        // Task cards
-        List<Task> tasks = page.getTasks();
-        if (tasks.isEmpty()) {
+        // Task cards - apply filters
+        List<Task> tasks = page.getTasks().stream()
+            .filter(this::matchesFilters)
+            .sorted(Comparator.comparing(Task::getStatus)
+                .thenComparing(Task::getDueDate, Comparator.nullsLast(Comparator.naturalOrder())))
+            .collect(Collectors.toList());
+            
+        if (page.getTasks().isEmpty()) {
             JPanel emptyState = createEmptyState("No tasks yet", "Click \"+ Add Task\" to create your first task");
             section.add(emptyState);
+        } else if (tasks.isEmpty()) {
+            JPanel emptyState = createEmptyState("No tasks match filters", "Try adjusting your filter criteria");
+            section.add(emptyState);
         } else {
-            tasks.stream()
-                .sorted(Comparator.comparing(Task::getStatus)
-                    .thenComparing(Task::getDueDate, Comparator.nullsLast(Comparator.naturalOrder())))
-                .forEach(task -> {
-                    JPanel card = createTaskCard(task, page, true);
-                    section.add(card);
-                    section.add(Box.createVerticalStrut(8));
-                });
+            for (Task task : tasks) {
+                JPanel card = createTaskCard(task, page, true);
+                section.add(card);
+                section.add(Box.createVerticalStrut(8));
+            }
         }
 
         return section;
     }
+    
+    private JPanel createFilterBar(Page page) {
+        JPanel bar = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+        bar.setBackground(BACKGROUND);
+        bar.setMaximumSize(new Dimension(Integer.MAX_VALUE, 32));
+        bar.setAlignmentX(Component.LEFT_ALIGNMENT);
+        
+        JLabel filterLabel = new JLabel("Filter:");
+        filterLabel.setFont(FONT_TINY);
+        filterLabel.setForeground(TEXT_MUTED);
+        bar.add(filterLabel);
+        
+        // Status filter
+        String[] statusOptions = {"All Status", "Not Started", "In Progress", "Completed", "Cancelled"};
+        JComboBox<String> statusFilter = new JComboBox<>(statusOptions);
+        statusFilter.setFont(FONT_TINY);
+        statusFilter.setBackground(CARD_BG);
+        statusFilter.setForeground(TEXT_PRIMARY);
+        if (filterStatus != null) {
+            statusFilter.setSelectedItem(filterStatus.toString());
+        }
+        statusFilter.addActionListener(e -> {
+            String selected = (String) statusFilter.getSelectedItem();
+            if ("All Status".equals(selected)) {
+                filterStatus = null;
+            } else {
+                try {
+                    filterStatus = Status.valueOf(selected.toUpperCase().replace(" ", "_"));
+                } catch (Exception ex) {
+                    filterStatus = null;
+                }
+            }
+            refreshCurrentView();
+        });
+        bar.add(statusFilter);
+        
+        // Priority filter
+        String[] priorityOptions = {"All Priority", "High", "Medium", "Low"};
+        JComboBox<String> priorityFilter = new JComboBox<>(priorityOptions);
+        priorityFilter.setFont(FONT_TINY);
+        priorityFilter.setBackground(CARD_BG);
+        priorityFilter.setForeground(TEXT_PRIMARY);
+        if (filterPriority != null) {
+            priorityFilter.setSelectedItem(filterPriority.toString());
+        }
+        priorityFilter.addActionListener(e -> {
+            String selected = (String) priorityFilter.getSelectedItem();
+            if ("All Priority".equals(selected)) {
+                filterPriority = null;
+            } else {
+                try {
+                    filterPriority = Priority.valueOf(selected.toUpperCase());
+                } catch (Exception ex) {
+                    filterPriority = null;
+                }
+            }
+            refreshCurrentView();
+        });
+        bar.add(priorityFilter);
+        
+        // Clear filters button
+        if (filterStatus != null || filterPriority != null || filterTag != null) {
+            JButton clearBtn = createTextButton("Clear", TEXT_TERTIARY);
+            clearBtn.setFont(FONT_TINY);
+            clearBtn.addActionListener(e -> {
+                filterStatus = null;
+                filterPriority = null;
+                filterTag = null;
+                refreshCurrentView();
+            });
+            bar.add(clearBtn);
+        }
+        
+        return bar;
+    }
+    
+    private boolean matchesFilters(Task task) {
+        if (filterStatus != null && task.getStatus() != filterStatus) {
+            return false;
+        }
+        if (filterPriority != null && task.getPriority() != filterPriority) {
+            return false;
+        }
+        if (filterTag != null && !task.hasTag(filterTag.getName())) {
+            return false;
+        }
+        return true;
+    }
 
-    private JPanel createTaskCard(Task task, Page page, boolean showActions) {
+private JPanel createTaskCard(Task task, Page page, boolean showActions) {
         LocalDate today = LocalDate.now();
         boolean isOverdue = task.isOverdue(today);
         boolean isCompleted = task.isCompleted();
+        boolean isDueSoon = !isCompleted && !isOverdue && task.getDueDate() != null 
+            && task.getDueDate().isAfter(today) 
+            && task.getDueDate().isBefore(today.plusDays(3));
 
         JPanel card = new RoundedPanel(8);
         card.setLayout(new BorderLayout(12, 0));
         card.setBorder(new EmptyBorder(16, 16, 16, 16));
-        card.setMaximumSize(new Dimension(Integer.MAX_VALUE, 80));
+        
+        // Calculate dynamic height based on tags
+        int baseHeight = 80;
+        if (!task.getTags().isEmpty()) {
+            baseHeight += 24;
+        }
+        card.setMaximumSize(new Dimension(Integer.MAX_VALUE, baseHeight));
         
         if (isCompleted) {
             card.setBackground(SUCCESS_LIGHT);
         } else if (isOverdue) {
             card.setBackground(DANGER_LIGHT);
+        } else if (isDueSoon) {
+            card.setBackground(WARNING_LIGHT); // Visual reminder for approaching deadlines
         } else {
             card.setBackground(CARD_BG);
         }
@@ -597,6 +951,10 @@ public class MainPanel extends JPanel {
                 infoText.append("<font color='#9E5C58'>").append(dateStr).append(" (Overdue)</font>");
             } else if (task.getDueDate().equals(today)) {
                 infoText.append("<font color='#A88A54'>").append(dateStr).append(" (Today)</font>");
+            } else if (isDueSoon) {
+                long daysUntil = java.time.temporal.ChronoUnit.DAYS.between(today, task.getDueDate());
+                infoText.append("<font color='#A88A54'>").append(dateStr)
+                    .append(" (Due in ").append(daysUntil).append(" day").append(daysUntil > 1 ? "s" : "").append(")</font>");
             } else {
                 infoText.append(dateStr);
             }
@@ -616,6 +974,18 @@ public class MainPanel extends JPanel {
             titlePanel.add(Box.createVerticalStrut(4));
             titlePanel.add(infoLabel);
         }
+        
+        // Display tags
+        if (!task.getTags().isEmpty()) {
+            JPanel tagsPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
+            tagsPanel.setOpaque(false);
+            for (Tag tag : task.getTags()) {
+                JLabel tagLabel = createTagLabel(tag);
+                tagsPanel.add(tagLabel);
+            }
+            titlePanel.add(Box.createVerticalStrut(4));
+            titlePanel.add(tagsPanel);
+        }
 
         leftPanel.add(titlePanel, BorderLayout.CENTER);
         card.add(leftPanel, BorderLayout.CENTER);
@@ -628,6 +998,11 @@ public class MainPanel extends JPanel {
             // Status badge
             JLabel statusBadge = createStatusBadge(task.getStatus());
             rightPanel.add(statusBadge);
+            
+            // Tags button
+            JButton tagsBtn = createIconButton("Tags");
+            tagsBtn.addActionListener(e -> showTagsDialog(task, page));
+            rightPanel.add(tagsBtn);
 
             // Edit button
             JButton editBtn = createIconButton("Edit");
@@ -647,6 +1022,158 @@ public class MainPanel extends JPanel {
         }
 
         return card;
+    }
+    
+    private JLabel createTagLabel(Tag tag) {
+        JLabel label = new JLabel(tag.toString());
+        label.setFont(FONT_TINY);
+        label.setForeground(tag.getColor());
+        label.setOpaque(true);
+        label.setBackground(new Color(
+            tag.getColor().getRed(), 
+            tag.getColor().getGreen(), 
+            tag.getColor().getBlue(), 
+            30
+        ));
+        label.setBorder(new EmptyBorder(2, 6, 2, 6));
+        return label;
+    }
+    
+    private void showTagsDialog(Task task, Page page) {
+        JPanel panel = new JPanel();
+        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+        panel.setBorder(new EmptyBorder(10, 10, 10, 10));
+        panel.setBackground(Color.WHITE);
+        panel.setPreferredSize(new Dimension(350, 300));
+        
+        // Current tags
+        JLabel currentLabel = new JLabel("Current Tags:");
+        currentLabel.setFont(FONT_SMALL);
+        currentLabel.setForeground(TEXT_SECONDARY);
+        currentLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        panel.add(currentLabel);
+        panel.add(Box.createVerticalStrut(8));
+        
+        JPanel currentTagsPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 4));
+        currentTagsPanel.setOpaque(false);
+        currentTagsPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        currentTagsPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 60));
+        
+        if (task.getTags().isEmpty()) {
+            JLabel noTags = new JLabel("No tags yet");
+            noTags.setFont(FONT_TINY);
+            noTags.setForeground(TEXT_MUTED);
+            currentTagsPanel.add(noTags);
+        } else {
+            for (Tag tag : task.getTags()) {
+                JPanel tagChip = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
+                tagChip.setOpaque(true);
+                tagChip.setBackground(new Color(tag.getColor().getRed(), tag.getColor().getGreen(), tag.getColor().getBlue(), 30));
+                
+                JLabel tagLabel = new JLabel(tag.toString());
+                tagLabel.setFont(FONT_TINY);
+                tagLabel.setForeground(tag.getColor());
+                tagChip.add(tagLabel);
+                
+                JButton removeBtn = new JButton("x");
+                removeBtn.setFont(FONT_MICRO);
+                removeBtn.setForeground(tag.getColor());
+                removeBtn.setBorder(null);
+                removeBtn.setContentAreaFilled(false);
+                removeBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+                removeBtn.addActionListener(e -> {
+                    task.removeTag(tag);
+                    refreshCurrentView();
+                    // Close and reopen dialog to refresh
+                    SwingUtilities.getWindowAncestor(panel).dispose();
+                    showTagsDialog(task, page);
+                });
+                tagChip.add(removeBtn);
+                
+                currentTagsPanel.add(tagChip);
+            }
+        }
+        panel.add(currentTagsPanel);
+        panel.add(Box.createVerticalStrut(16));
+        
+        // Add new tag
+        JLabel addLabel = new JLabel("Add Tag:");
+        addLabel.setFont(FONT_SMALL);
+        addLabel.setForeground(TEXT_SECONDARY);
+        addLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        panel.add(addLabel);
+        panel.add(Box.createVerticalStrut(8));
+        
+        JPanel addPanel = new JPanel(new BorderLayout(8, 0));
+        addPanel.setOpaque(false);
+        addPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        addPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 36));
+        
+        JTextField tagField = createStyledTextField("");
+        tagField.setToolTipText("Enter tag name");
+        addPanel.add(tagField, BorderLayout.CENTER);
+        
+        JButton addBtn = createStyledButton("Add", new Color(52, 52, 52), Color.WHITE);
+        addBtn.setFont(FONT_SMALL);
+        addBtn.addActionListener(e -> {
+            String tagName = tagField.getText().trim();
+            if (!tagName.isEmpty()) {
+                Tag tag = workspace.createTag(tagName);
+                task.addTag(tag);
+                refreshCurrentView();
+                tagField.setText("");
+                // Close and reopen dialog to refresh
+                SwingUtilities.getWindowAncestor(panel).dispose();
+                showTagsDialog(task, page);
+            }
+        });
+        addPanel.add(addBtn, BorderLayout.EAST);
+        
+        panel.add(addPanel);
+        panel.add(Box.createVerticalStrut(16));
+        
+        // Existing workspace tags
+        JLabel existingLabel = new JLabel("Workspace Tags:");
+        existingLabel.setFont(FONT_SMALL);
+        existingLabel.setForeground(TEXT_SECONDARY);
+        existingLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        panel.add(existingLabel);
+        panel.add(Box.createVerticalStrut(8));
+        
+        JPanel existingTagsPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 4));
+        existingTagsPanel.setOpaque(false);
+        existingTagsPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        
+        if (workspace.getTags().isEmpty()) {
+            JLabel noTags = new JLabel("No workspace tags yet");
+            noTags.setFont(FONT_TINY);
+            noTags.setForeground(TEXT_MUTED);
+            existingTagsPanel.add(noTags);
+        } else {
+            for (Tag tag : workspace.getTags()) {
+                if (!task.hasTag(tag.getName())) {
+                    JButton tagBtn = new JButton(tag.toString());
+                    tagBtn.setFont(FONT_TINY);
+                    tagBtn.setForeground(tag.getColor());
+                    tagBtn.setBackground(Color.WHITE);
+                    tagBtn.setBorder(new CompoundBorder(
+                        new LineBorder(tag.getColor(), 1, true),
+                        new EmptyBorder(2, 8, 2, 8)
+                    ));
+                    tagBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+                    tagBtn.addActionListener(e -> {
+                        task.addTag(tag);
+                        refreshCurrentView();
+                        SwingUtilities.getWindowAncestor(panel).dispose();
+                        showTagsDialog(task, page);
+                    });
+                    existingTagsPanel.add(tagBtn);
+                }
+            }
+        }
+        panel.add(existingTagsPanel);
+        
+        JOptionPane.showMessageDialog(this, panel, "Manage Tags - " + task.getTitle(), JOptionPane.PLAIN_MESSAGE);
     }
     
     private JPanel createStyledCheckbox(boolean selected, Runnable onClick) {
@@ -670,8 +1197,8 @@ public class MainPanel extends JPanel {
                     g2.setStroke(new BasicStroke(2f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
                     g2.drawLine(x + 5, y + 10, x + 8, y + 14);
                     g2.drawLine(x + 8, y + 14, x + 15, y + 6);
-                } else {
-                    g2.setColor(BORDER_DARK);
+} else {
+                    g2.setColor(BORDER_DARKER);
                     g2.setStroke(new BasicStroke(1.5f));
                     g2.draw(new Ellipse2D.Double(x + 0.5, y + 0.5, size - 1, size - 1));
                 }
@@ -915,7 +1442,7 @@ public class MainPanel extends JPanel {
         contentArea.repaint();
     }
 
-    private Page findPageForTask(Task task) {
+private Page findPageForTask(Task task) {
         for (Page page : workspace.getPages()) {
             for (Task t : page.getTasks()) {
                 if (t.getId().equals(task.getId())) {
@@ -923,7 +1450,373 @@ public class MainPanel extends JPanel {
                 }
             }
         }
+        // Also check archived pages
+        for (Page page : workspace.getArchivedPages()) {
+            for (Task t : page.getTasks()) {
+                if (t.getId().equals(task.getId())) {
+                    return page;
+                }
+            }
+        }
         return null;
+    }
+    
+    // ==================== SEARCH VIEW ====================
+    
+    private void showSearchResults() {
+        contentArea.removeAll();
+        
+        JPanel mainContent = new JPanel(new BorderLayout());
+        mainContent.setBackground(BACKGROUND);
+        mainContent.setBorder(new EmptyBorder(36, 56, 36, 56));
+        
+        // Header
+        JPanel header = new JPanel();
+        header.setLayout(new BoxLayout(header, BoxLayout.Y_AXIS));
+        header.setBackground(BACKGROUND);
+        header.setBorder(new EmptyBorder(0, 0, 28, 0));
+        
+        JLabel titleLabel = new JLabel("Search Results");
+        titleLabel.setFont(FONT_TITLE);
+        titleLabel.setForeground(TEXT_PRIMARY);
+        titleLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        
+        JLabel subtitleLabel = new JLabel("Results for: \"" + searchQuery + "\"");
+        subtitleLabel.setFont(FONT_BODY);
+        subtitleLabel.setForeground(TEXT_SECONDARY);
+        subtitleLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        
+        header.add(titleLabel);
+        header.add(Box.createVerticalStrut(6));
+        header.add(subtitleLabel);
+        
+        mainContent.add(header, BorderLayout.NORTH);
+        
+        // Search results
+        JPanel resultsList = new JPanel();
+        resultsList.setLayout(new BoxLayout(resultsList, BoxLayout.Y_AXIS));
+        resultsList.setBackground(BACKGROUND);
+        
+        String query = searchQuery.toLowerCase();
+        boolean hasResults = false;
+        
+        // Search in pages
+        for (Page page : workspace.getPages()) {
+            // Check page name
+            if (page.getName().toLowerCase().contains(query)) {
+                JPanel pageResult = createSearchResultItem("Page", page.getName(), 
+                    () -> { currentView = ViewMode.PAGE; selectPage(page); pageList.setSelectedValue(page, true); });
+                resultsList.add(pageResult);
+                resultsList.add(Box.createVerticalStrut(8));
+                hasResults = true;
+            }
+            
+            // Check tasks
+            for (Task task : page.getTasks()) {
+                if (task.getTitle().toLowerCase().contains(query)) {
+                    JPanel taskResult = createSearchResultItem("Task in " + page.getName(), task.getTitle(),
+                        () -> { currentView = ViewMode.PAGE; selectPage(page); pageList.setSelectedValue(page, true); });
+                    resultsList.add(taskResult);
+                    resultsList.add(Box.createVerticalStrut(8));
+                    hasResults = true;
+                }
+                // Check task tags
+                for (Tag tag : task.getTags()) {
+                    if (tag.getName().toLowerCase().contains(query)) {
+                        JPanel tagResult = createSearchResultItem("Tag on task: " + task.getTitle(), "#" + tag.getName(),
+                            () -> { currentView = ViewMode.PAGE; selectPage(page); pageList.setSelectedValue(page, true); });
+                        resultsList.add(tagResult);
+                        resultsList.add(Box.createVerticalStrut(8));
+                        hasResults = true;
+                    }
+                }
+            }
+            
+            // Check notes
+            for (Note note : page.getNotes()) {
+                if (note.getContent().toLowerCase().contains(query)) {
+                    JPanel noteResult = createSearchResultItem("Note in " + page.getName(), note.getPreview(50),
+                        () -> { currentView = ViewMode.PAGE; selectPage(page); pageList.setSelectedValue(page, true); });
+                    resultsList.add(noteResult);
+                    resultsList.add(Box.createVerticalStrut(8));
+                    hasResults = true;
+                }
+            }
+        }
+        
+        if (!hasResults) {
+            JPanel emptyState = createEmptyState("No results found", "Try a different search term");
+            emptyState.setBorder(new EmptyBorder(36, 0, 0, 0));
+            resultsList.add(emptyState);
+        }
+        
+        JScrollPane scrollPane = new JScrollPane(resultsList);
+        scrollPane.setBorder(null);
+        scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        scrollPane.getVerticalScrollBar().setUnitIncrement(16);
+        scrollPane.setBackground(BACKGROUND);
+        scrollPane.getViewport().setBackground(BACKGROUND);
+        
+        mainContent.add(scrollPane, BorderLayout.CENTER);
+        contentArea.add(mainContent, BorderLayout.CENTER);
+        
+        contentArea.revalidate();
+        contentArea.repaint();
+    }
+    
+    private JPanel createSearchResultItem(String type, String text, Runnable onClick) {
+        JPanel card = new RoundedPanel(8);
+        card.setLayout(new BorderLayout(12, 0));
+        card.setBorder(new EmptyBorder(14, 16, 14, 16));
+        card.setBackground(CARD_BG);
+        card.setMaximumSize(new Dimension(Integer.MAX_VALUE, 70));
+        card.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        
+        JPanel textPanel = new JPanel();
+        textPanel.setLayout(new BoxLayout(textPanel, BoxLayout.Y_AXIS));
+        textPanel.setOpaque(false);
+        
+        JLabel typeLabel = new JLabel(type);
+        typeLabel.setFont(FONT_TINY);
+        typeLabel.setForeground(TEXT_MUTED);
+        
+        JLabel textLabel = new JLabel(text);
+        textLabel.setFont(FONT_BODY);
+        textLabel.setForeground(TEXT_PRIMARY);
+        
+        textPanel.add(typeLabel);
+        textPanel.add(Box.createVerticalStrut(4));
+        textPanel.add(textLabel);
+        
+        card.add(textPanel, BorderLayout.CENTER);
+        
+        JLabel arrowLabel = new JLabel("\u2192");
+        arrowLabel.setFont(FONT_BODY);
+        arrowLabel.setForeground(TEXT_MUTED);
+        card.add(arrowLabel, BorderLayout.EAST);
+        
+        card.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                card.setBackground(SIDEBAR_HOVER);
+            }
+            @Override
+            public void mouseExited(MouseEvent e) {
+                card.setBackground(CARD_BG);
+            }
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                onClick.run();
+            }
+        });
+        
+        return card;
+    }
+    
+    // ==================== ARCHIVED PAGES VIEW ====================
+    
+    private void showArchivedPages() {
+        contentArea.removeAll();
+        
+        JPanel mainContent = new JPanel(new BorderLayout());
+        mainContent.setBackground(BACKGROUND);
+        mainContent.setBorder(new EmptyBorder(36, 56, 36, 56));
+        
+        // Header
+        JPanel header = new JPanel();
+        header.setLayout(new BoxLayout(header, BoxLayout.Y_AXIS));
+        header.setBackground(BACKGROUND);
+        header.setBorder(new EmptyBorder(0, 0, 28, 0));
+        
+        JLabel titleLabel = new JLabel("Archived Pages");
+        titleLabel.setFont(FONT_TITLE);
+        titleLabel.setForeground(TEXT_PRIMARY);
+        titleLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        
+        JLabel subtitleLabel = new JLabel("Pages you've hidden from the main view");
+        subtitleLabel.setFont(FONT_BODY);
+        subtitleLabel.setForeground(TEXT_SECONDARY);
+        subtitleLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        
+        header.add(titleLabel);
+        header.add(Box.createVerticalStrut(6));
+        header.add(subtitleLabel);
+        
+        mainContent.add(header, BorderLayout.NORTH);
+        
+        // Archived pages list
+        JPanel pagesList = new JPanel();
+        pagesList.setLayout(new BoxLayout(pagesList, BoxLayout.Y_AXIS));
+        pagesList.setBackground(BACKGROUND);
+        
+        List<Page> archived = workspace.getArchivedPages();
+        
+        if (archived.isEmpty()) {
+            JPanel emptyState = createEmptyState("No archived pages", "Archive pages you no longer need");
+            emptyState.setBorder(new EmptyBorder(36, 0, 0, 0));
+            pagesList.add(emptyState);
+        } else {
+            for (Page page : archived) {
+                JPanel card = createArchivedPageCard(page);
+                pagesList.add(card);
+                pagesList.add(Box.createVerticalStrut(8));
+            }
+        }
+        
+        JScrollPane scrollPane = new JScrollPane(pagesList);
+        scrollPane.setBorder(null);
+        scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        scrollPane.getVerticalScrollBar().setUnitIncrement(16);
+        scrollPane.setBackground(BACKGROUND);
+        scrollPane.getViewport().setBackground(BACKGROUND);
+        
+        mainContent.add(scrollPane, BorderLayout.CENTER);
+        contentArea.add(mainContent, BorderLayout.CENTER);
+        
+        contentArea.revalidate();
+        contentArea.repaint();
+    }
+    
+    private JPanel createArchivedPageCard(Page page) {
+        JPanel card = new RoundedPanel(8);
+        card.setLayout(new BorderLayout(12, 0));
+        card.setBorder(new EmptyBorder(16, 16, 16, 16));
+        card.setBackground(CARD_BG);
+        card.setMaximumSize(new Dimension(Integer.MAX_VALUE, 80));
+        
+        JPanel textPanel = new JPanel();
+        textPanel.setLayout(new BoxLayout(textPanel, BoxLayout.Y_AXIS));
+        textPanel.setOpaque(false);
+        
+        JLabel nameLabel = new JLabel(page.getName());
+        nameLabel.setFont(FONT_BODY);
+        nameLabel.setForeground(TEXT_PRIMARY);
+        
+        int taskCount = page.getTasks().size();
+        int noteCount = page.getNotes().size();
+        JLabel infoLabel = new JLabel(taskCount + " tasks, " + noteCount + " notes");
+        infoLabel.setFont(FONT_TINY);
+        infoLabel.setForeground(TEXT_MUTED);
+        
+        textPanel.add(nameLabel);
+        textPanel.add(Box.createVerticalStrut(4));
+        textPanel.add(infoLabel);
+        
+        card.add(textPanel, BorderLayout.CENTER);
+        
+        // Actions
+        JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        actions.setOpaque(false);
+        
+        JButton restoreBtn = createTextButton("Restore", SUCCESS);
+        restoreBtn.setFont(FONT_SMALL);
+        restoreBtn.addActionListener(e -> {
+            workspace.restorePage(page.getId());
+            pageListModel.addElement(page);
+            showArchivedPages();
+        });
+        actions.add(restoreBtn);
+        
+        JButton deleteBtn = createTextButton("Delete", DANGER);
+        deleteBtn.setFont(FONT_SMALL);
+        deleteBtn.addActionListener(e -> {
+            int confirm = JOptionPane.showConfirmDialog(this,
+                "Permanently delete \"" + page.getName() + "\"? This cannot be undone.",
+                "Delete Archived Page", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+            if (confirm == JOptionPane.YES_OPTION) {
+                workspace.deleteArchivedPage(page.getId());
+                showArchivedPages();
+            }
+        });
+        actions.add(deleteBtn);
+        
+        card.add(actions, BorderLayout.EAST);
+        
+        return card;
+    }
+    
+    // ==================== EXPORT/IMPORT ====================
+    
+    private void exportWorkspace() {
+        JFileChooser chooser = new JFileChooser();
+        chooser.setDialogTitle("Export Workspace");
+        chooser.setSelectedFile(new File("kairo-backup.json"));
+        chooser.setFileFilter(new FileNameExtensionFilter("JSON Files", "json"));
+        
+        if (chooser.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
+            File file = chooser.getSelectedFile();
+            if (!file.getName().endsWith(".json")) {
+                file = new File(file.getAbsolutePath() + ".json");
+            }
+            
+            try {
+                WorkspaceStorage storage = new WorkspaceStorage();
+                String json = storage.toJson(workspace);
+                try (FileWriter writer = new FileWriter(file)) {
+                    writer.write(json);
+                }
+                JOptionPane.showMessageDialog(this, "Workspace exported successfully!",
+                    "Export Complete", JOptionPane.INFORMATION_MESSAGE);
+            } catch (IOException e) {
+                JOptionPane.showMessageDialog(this, "Failed to export workspace: " + e.getMessage(),
+                    "Export Error", JOptionPane.ERROR_MESSAGE);
+            }
+        }
+    }
+    
+    private void importWorkspace() {
+        int confirm = JOptionPane.showConfirmDialog(this,
+            "Importing will replace your current workspace. Continue?",
+            "Import Workspace", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+        
+        if (confirm != JOptionPane.YES_OPTION) return;
+        
+        JFileChooser chooser = new JFileChooser();
+        chooser.setDialogTitle("Import Workspace");
+        chooser.setFileFilter(new FileNameExtensionFilter("JSON Files", "json"));
+        
+        if (chooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
+            File file = chooser.getSelectedFile();
+            
+            try {
+                String json = Files.readString(file.toPath());
+                WorkspaceStorage storage = new WorkspaceStorage();
+                Workspace imported = storage.fromJson(json);
+                
+                // Clear current workspace and copy data
+                // Note: Since workspace is final, we copy the data manually
+                while (!workspace.getPages().isEmpty()) {
+                    workspace.deletePage(workspace.getPages().get(0).getId());
+                }
+                
+                for (Page page : imported.getPages()) {
+                    Page newPage = workspace.createPage(page.getName());
+                    for (Task task : page.getTasks()) {
+                        newPage.addTask(task);
+                    }
+                    for (Note note : page.getNotes()) {
+                        newPage.addNote(note);
+                    }
+                }
+                
+                // Update UI
+                pageListModel.clear();
+                workspace.getPages().forEach(pageListModel::addElement);
+                
+                if (!workspace.getPages().isEmpty()) {
+                    selectPage(workspace.getPages().get(0));
+                } else {
+                    showWelcome();
+                }
+                
+                JOptionPane.showMessageDialog(this, "Workspace imported successfully!",
+                    "Import Complete", JOptionPane.INFORMATION_MESSAGE);
+                    
+            } catch (IOException e) {
+                JOptionPane.showMessageDialog(this, "Failed to import workspace: " + e.getMessage(),
+                    "Import Error", JOptionPane.ERROR_MESSAGE);
+            }
+        }
     }
 
     // ==================== DIALOGS ====================
