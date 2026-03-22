@@ -12,10 +12,7 @@ import java.nio.file.Paths;
 
 /**
  * Kairo - A Smart Task and Scheduling System
- * Main application entry point with modern, minimal UI
- * 
- * Features a sophisticated neutral palette with
- * deep blacks, cool greys, and soft tan accents
+ * Main application entry point
  */
 public class KairoApp {
 

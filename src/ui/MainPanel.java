@@ -30,8 +30,8 @@ import Storage.WorkspaceStorage;
 /**
  * Main UI panel with sophisticated, modern minimal design
  * Features a refined neutral palette with blacks, cool greys, and soft tans
- * Inspired by Notion and modern productivity apps with a timeless aesthetic
  */
+
 public class MainPanel extends JPanel {
 
     // Data
@@ -95,7 +95,7 @@ public class MainPanel extends JPanel {
     private static final Color TEXT_MUTED_LIGHT = new Color(175, 175, 175);
     
     // Text colors - dark theme
-    private static final Color TEXT_PRIMARY_DARK = new Color(240, 240, 240);
+    private static final Color TEXT_PRIMARY_DARK = new Color(110, 110, 110);
     private static final Color TEXT_SECONDARY_DARK = new Color(180, 180, 180);
     private static final Color TEXT_TERTIARY_DARK = new Color(140, 140, 140);
     private static final Color TEXT_MUTED_DARK = new Color(100, 100, 100);
