@@ -17,9 +17,14 @@ public class StorageManager {
 		
 	}
 	
-	public void save(Workspace workspace) {
+public void save(Workspace workspace) {
 		
 		try {
+			
+			// Create parent directories if they don't exist
+			if (filePath.getParent() != null && !Files.exists(filePath.getParent())) {
+				Files.createDirectories(filePath.getParent());
+			}
 			
 			String json = workspaceStorage.toJson(workspace);
 			
